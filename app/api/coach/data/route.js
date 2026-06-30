@@ -1,22 +1,14 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { gymDateKey } from '@/lib/time';
+import { coachAuthed } from '@/lib/coachAuth';
 
 export const dynamic = 'force-dynamic';
-
-const COOKIE = 'coach_session';
-
-function authed() {
-  const expected = process.env.COACH_PIN;
-  const session = cookies().get(COOKIE)?.value;
-  return Boolean(expected) && session === String(expected);
-}
 
 // GET /api/coach/data?date=YYYY-MM-DD
 // Returns the attendance list for that gym-day, joined with member name + phone.
 export async function GET(req) {
-  if (!authed()) {
+  if (!coachAuthed()) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
@@ -26,7 +18,7 @@ export async function GET(req) {
   const sb = supabaseAdmin();
   const { data, error } = await sb
     .from('attendance')
-    .select('check_in, check_out, clients ( name, phone )')
+    .select('id, check_in, check_out, clients ( name, phone )')
     .eq('date', date)
     .order('check_in', { ascending: true });
 
@@ -38,6 +30,7 @@ export async function GET(req) {
   }
 
   const records = (data || []).map((r) => ({
+    id: r.id,
     name: r.clients?.name || 'Unknown',
     phone: r.clients?.phone || '',
     checkIn: r.check_in,

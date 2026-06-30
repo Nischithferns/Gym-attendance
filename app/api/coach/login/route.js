@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
+import { COACH_COOKIE as COOKIE } from '@/lib/coachAuth';
 
 export const dynamic = 'force-dynamic';
-
-const COOKIE = 'coach_session';
 
 // POST /api/coach/login  { pin }
 // On a correct PIN, sets an httpOnly session cookie. The PIN itself never

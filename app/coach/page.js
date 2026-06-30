@@ -90,6 +90,30 @@ export default function CoachPage() {
     setRecords([]);
   }
 
+  async function onDelete(rec) {
+    const ok = window.confirm(
+      `Delete attendance for ${rec.name}?\n\nTheir record for this day will be removed and they'll be able to scan again today.`
+    );
+    if (!ok) return;
+    try {
+      const r = await fetch('/api/coach/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rec.id }),
+      });
+      const data = await r.json();
+      if (data.ok) {
+        // Remove locally for an instant update, then refresh from server.
+        setRecords((prev) => prev.filter((x) => x.id !== rec.id));
+        load(date);
+      } else {
+        alert(data.message || 'Could not delete. Please try again.');
+      }
+    } catch {
+      alert('Network problem. Please try again.');
+    }
+  }
+
   // ── PIN screen ──
   if (!authed) {
     return (
@@ -168,8 +192,8 @@ export default function CoachPage() {
         <div className="empty">No attendance recorded for this date.</div>
       ) : (
         <div className="list">
-          {records.map((r, i) => (
-            <div className="row" key={i}>
+          {records.map((r) => (
+            <div className="row" key={r.id}>
               <div className="avatar">{(r.name || '?').charAt(0).toUpperCase()}</div>
               <div className="who">
                 <div className="nm">{r.name}</div>
@@ -187,6 +211,14 @@ export default function CoachPage() {
                   )}
                 </div>
               </div>
+              <button
+                className="del-btn"
+                title="Delete this attendance"
+                aria-label={`Delete attendance for ${r.name}`}
+                onClick={() => onDelete(r)}
+              >
+                🗑
+              </button>
             </div>
           ))}
         </div>
