@@ -24,6 +24,9 @@ export default function CoachPage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [pendingDelete, setPendingDelete] = useState(null); // record awaiting confirm
+  const [deleting, setDeleting] = useState(false);
+
   const load = useCallback(async (d) => {
     setLoading(true);
     setError('');
@@ -90,11 +93,10 @@ export default function CoachPage() {
     setRecords([]);
   }
 
-  async function onDelete(rec) {
-    const ok = window.confirm(
-      `Delete attendance for ${rec.name}?\n\nTheir record for this day will be removed and they'll be able to scan again today.`
-    );
-    if (!ok) return;
+  async function confirmDelete() {
+    const rec = pendingDelete;
+    if (!rec) return;
+    setDeleting(true);
     try {
       const r = await fetch('/api/coach/delete', {
         method: 'POST',
@@ -105,12 +107,17 @@ export default function CoachPage() {
       if (data.ok) {
         // Remove locally for an instant update, then refresh from server.
         setRecords((prev) => prev.filter((x) => x.id !== rec.id));
+        setPendingDelete(null);
         load(date);
       } else {
-        alert(data.message || 'Could not delete. Please try again.');
+        setError(data.message || 'Could not delete. Please try again.');
+        setPendingDelete(null);
       }
     } catch {
-      alert('Network problem. Please try again.');
+      setError('Network problem. Please try again.');
+      setPendingDelete(null);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -215,12 +222,40 @@ export default function CoachPage() {
                 className="del-btn"
                 title="Delete this attendance"
                 aria-label={`Delete attendance for ${r.name}`}
-                onClick={() => onDelete(r)}
+                onClick={() => setPendingDelete(r)}
               >
                 🗑
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div
+          className="modal-overlay"
+          onClick={() => !deleting && setPendingDelete(null)}
+        >
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Are you sure?</h3>
+            <p>This attendance record will be deleted.</p>
+            <div className="modal-actions">
+              <button
+                className="btn ghost"
+                disabled={deleting}
+                onClick={() => setPendingDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn danger"
+                disabled={deleting}
+                onClick={confirmDelete}
+              >
+                {deleting ? 'Deleting…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>
